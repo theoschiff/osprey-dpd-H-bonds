@@ -43,15 +43,17 @@ bool operator==(const CPolymer& a, const CPolymer& b)
 
 // Static member variable holding the parameters of the Morse potentials.
 
+//TODO : These would have to be set correctly : based on the Vish
+
 double CPolymer::m_Morse13Depth          = 1.0;
 double CPolymer::m_Morse13Width          = 1.0;
-double CPolymer::m_Morse13EqDistance     = 1.0;
+double CPolymer::m_Morse13EqDistance     = 0.6 * 0.5; // Rc = 0.5 in DPD
 double CPolymer::m_Morse13CutoffDistance = 1.0;
 double CPolymer::m_Morse13Proximity      = 1.0;
 
 double CPolymer::m_Morse15Depth          = 1.0;
 double CPolymer::m_Morse15Width          = 1.0;
-double CPolymer::m_Morse15EqDistance     = 1.0;
+double CPolymer::m_Morse15EqDistance     = 0.9;
 double CPolymer::m_Morse15CutoffDistance = 1.0;
 double CPolymer::m_Morse15Proximity      = 1.0;
 
@@ -730,7 +732,6 @@ void CPolymer::AddBondPairForces(ISimBoxBase* const pISimBoxBase)
 // All parameters are hard-wired in this class.
 // This is VERY inefficient, but I can store the Helix polymers locally later to speed it up.
 
-
 void CPolymer::AddHelixForces()
 {
     if( GetType() == m_HelixPolymerType )  // Not really needed as CSimBox already selected Helix polymers.
@@ -747,12 +748,12 @@ void CPolymer::AddHelixForces()
             {
                 vHelixBeads.push_back(*iterBead);
                 
-                    std::cout << "Polymer/bead ids " << GetId() << " " << (*iterBead)->GetId() << zEndl;
-             }
+                std::cout << "Polymer/bead ids " << GetId() << " " << (*iterBead)->GetId() << zEndl;
+            }
         }
 
         // Apply the proximity test to the S beads to form the helix, and then the force.
-        // Note that as we iterate over each bead, we know thatwe must look ahead precisely n beads, so we don't
+        // Note that as we iterate over each bead, we know that we must look ahead precisely n beads, so we don't
         // need a double loop. But we do need to check that the beads that would be connected are S beads.
         //
         //  m_BeadSep13 and m_BeadSep15 are the separation of the S beads that are to be tied together.
@@ -762,17 +763,105 @@ void CPolymer::AddHelixForces()
         {
             for(BeadVectorIterator iterBead=vHelixBeads.begin(); iterBead!=vHelixBeads.end(); iterBead++)
             {
+                CBead* pBead1 = *iterBead;
+
+                // === 1–3 MORSE INTERACTION ===
+                {
+                    BeadVectorIterator iterBead13 = iterBead;
+                    std::advance(iterBead13, m_BeadSep13);
+
+                    if( iterBead13 != vHelixBeads.end() )
+                    {
+                        CBead* pBead2 = *iterBead13;
+
+                        // Both must be S beads by construction of vHelixBeads
+
+                        double dx = pBead1->GetunPBCXPos() - pBead2->GetunPBCXPos(); //Periodic Boundary Conditions are considered here!!
+                        double dy = pBead1->GetunPBCYPos() - pBead2->GetunPBCYPos();
+                        double dz = pBead1->GetunPBCZPos() - pBead2->GetunPBCZPos();
+
+                        double r2 = dx*dx + dy*dy + dz*dz;
+
+						// just in case of numerical round-off
+                        if(r2 > 0.0)
+                        {
+                            double r = sqrt(r2);
+
+                            // Proximity / cutoff test
+                            if( r < m_Morse13CutoffDistance && r < m_Morse13Proximity )
+                            {
+                                // |r - r_e| in the exponent
+                                double dr_abs = fabs(r - m_Morse13EqDistance);
+                                double e = exp(-m_Morse13Width * dr_abs);
+
+                                // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 )
+                                double forceMag = 2.0 * m_Morse13Depth * e * (e - 1.0);
 
 
+								// Fx,ij = F_mag (r) * dx / r_ij etc
+                                double invr = 1.0 / r;
+                                double fx = forceMag * dx * invr;
+                                double fy = forceMag * dy * invr;
+                                double fz = forceMag * dz * invr;
 
-                
-                // To add the force components fx, fy, fz to a bead use this:
-                //
-                // (*iterBead)->AddHelixForces(fx, fy, fz);
+                                // Apply equal and opposite forces to the bead pair
+                                pBead1->AddHelixForces( fx,  fy,  fz );
+                                pBead2->AddHelixForces( -fx, -fy, -fz );
+                            }
+                        }
+                    }
+                }
+
+                // === 1–5 MORSE INTERACTION ===
+                {
+                    BeadVectorIterator iterBead15 = iterBead;
+                    std::advance(iterBead15, m_BeadSep15);
+
+                    if( iterBead15 != vHelixBeads.end() )
+                    {
+                        CBead* pBead2 = *iterBead15;
+
+                        // Both must be S beads by construction of vHelixBeads
+
+                        double dx = pBead1->GetunPBCXPos() - pBead2->GetunPBCXPos(); //Periodic Boundary Conditions are considered here!!
+                        double dy = pBead1->GetunPBCYPos() - pBead2->GetunPBCYPos();
+                        double dz = pBead1->GetunPBCZPos() - pBead2->GetunPBCZPos();
+
+                        double r2 = dx*dx + dy*dy + dz*dz;
+
+						// just in case of numerical round-off..
+                        if(r2 > 0.0)
+                        {
+                            double r = sqrt(r2);
+
+                            // Proximity / cutoff test
+                            if( r < m_Morse15CutoffDistance && r < m_Morse15Proximity )
+                            {
+                                // |r - r_e| in the exponent
+                                double dr_abs = fabs(r - m_Morse15EqDistance);
+                                double e = exp(-m_Morse15Width * dr_abs);
+
+                                // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 )
+                                double forceMag = 2.0 * m_Morse15Depth * e * (e - 1.0);
+
+								// Fx,ij = F_mag (r) * dx / r_ij etc
+                                double invr = 1.0 / r;
+                                double fx = forceMag * dx * invr;
+                                double fy = forceMag * dy * invr;
+                                double fz = forceMag * dz * invr;
+
+                                // Apply equal and opposite forces to the bead pair
+                                pBead1->AddHelixForces( fx,  fy,  fz );
+                                pBead2->AddHelixForces( -fx, -fy, -fz );
+                            }
+                        }
+                    }
+                }
             }
         }
     }
 }
+
 
 
 
