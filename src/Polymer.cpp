@@ -45,16 +45,16 @@ bool operator==(const CPolymer& a, const CPolymer& b)
 
 //TODO : These would have to be set correctly : based on the Vish
 
-double CPolymer::m_Morse13Depth          = 1.0;
-double CPolymer::m_Morse13Width          = 1.0;
-double CPolymer::m_Morse13EqDistance     = 0.6 * 0.5; // Rc = 0.5 in DPD
-double CPolymer::m_Morse13CutoffDistance = 1.0;
+double CPolymer::m_Morse13Depth          = 12.0; // 12 kT
+double CPolymer::m_Morse13Width          = 8.0;
+double CPolymer::m_Morse13EqDistance     = 0.3; // Rc = 0.5 in DPD -> 0.6 * Rc = 0.3
+double CPolymer::m_Morse13CutoffDistance = 1.25; // 2.5 * Rc
 double CPolymer::m_Morse13Proximity      = 1.0;
 
-double CPolymer::m_Morse15Depth          = 1.0;
-double CPolymer::m_Morse15Width          = 1.0;
-double CPolymer::m_Morse15EqDistance     = 0.9;
-double CPolymer::m_Morse15CutoffDistance = 1.0;
+double CPolymer::m_Morse15Depth          = 12.0; // 12 kT
+double CPolymer::m_Morse15Width          = 8.0;
+double CPolymer::m_Morse15EqDistance     = 0.45; // Rc = 0.5 in DPD -> 0.9 * Rc = 0.45
+double CPolymer::m_Morse15CutoffDistance = 1.25; // 2.5 * Rc
 double CPolymer::m_Morse15Proximity      = 1.0;
 
 //////////////////////////////////////////////////////////////////////
@@ -788,7 +788,7 @@ void CPolymer::AddHelixForces()
                             double r = sqrt(r2);
 
                             // Proximity / cutoff test
-                            if( r < m_Morse13CutoffDistance && r < m_Morse13Proximity )
+                            if( r < m_Morse13CutoffDistance)
                             {
                                 // |r - r_e| in the exponent
                                 double dr_abs = fabs(r - m_Morse13EqDistance);
@@ -835,7 +835,7 @@ void CPolymer::AddHelixForces()
                             double r = sqrt(r2);
 
                             // Proximity / cutoff test
-                            if( r < m_Morse15CutoffDistance && r < m_Morse15Proximity )
+                            if( r < m_Morse15CutoffDistance)
                             {
                                 // |r - r_e| in the exponent
                                 double dr_abs = fabs(r - m_Morse15EqDistance);
