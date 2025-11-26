@@ -41,15 +41,29 @@ bool operator==(const CPolymer& a, const CPolymer& b)
 	return a.GetId() == b.GetId();
 }
 
+// Static member variable holding the parameters of the Morse potentials.
+
+double CPolymer::m_Morse13Depth          = 1.0;
+double CPolymer::m_Morse13Width          = 1.0;
+double CPolymer::m_Morse13EqDistance     = 1.0;
+double CPolymer::m_Morse13CutoffDistance = 1.0;
+double CPolymer::m_Morse13Proximity      = 1.0;
+
+double CPolymer::m_Morse15Depth          = 1.0;
+double CPolymer::m_Morse15Width          = 1.0;
+double CPolymer::m_Morse15EqDistance     = 1.0;
+double CPolymer::m_Morse15CutoffDistance = 1.0;
+double CPolymer::m_Morse15Proximity      = 1.0;
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
 //////////////////////////////////////////////////////////////////////
 // Default constructor used to make empty polymer instances.
 
-CPolymer::CPolymer() : m_id(0), m_Type(0), m_pHead(0), m_pTail(0)
+CPolymer::CPolymer() : m_id(0), m_Type(0), m_pHead(0), m_pTail(0),
+m_HelixPolymerType(1), m_HelixBeadType(1), m_BeadSep13(2), m_BeadSep15(4)
 {
-
+    
 #if EnableParallelSimBox == SimMPSEnabled
     m_pExtPolymer = 0;
 #endif
@@ -83,7 +97,9 @@ CPolymer::CPolymer(long type, bool blinear, double fraction,
 													m_pHead(pHead),
 													m_pTail(pTail),
 													m_vBeads(vBeads),
-													m_vBonds(vBonds)
+													m_vBonds(vBonds),
+                                                    m_HelixPolymerType(1), m_HelixBeadType(1),
+                                                    m_BeadSep13(2), m_BeadSep15(4)
 {
 
 #if EnableParallelSimBox == SimMPSEnabled
@@ -101,7 +117,9 @@ CPolymer::CPolymer(long type, bool blinear, double fraction,
 													m_pTail(pTail),
 													m_vBeads(vBeads),
 													m_vBonds(vBonds),
-													m_vBondPairs(vBondPairs)
+													m_vBondPairs(vBondPairs),
+                                                    m_HelixPolymerType(1), m_HelixBeadType(1),
+                                                    m_BeadSep13(2), m_BeadSep15(4)
 {
 
 #if EnableParallelSimBox == SimMPSEnabled
@@ -109,7 +127,6 @@ CPolymer::CPolymer(long type, bool blinear, double fraction,
 #endif
 
 }
-
 
 // The CPolymer destructor is responsible for destroying its own CBeads, CBonds and
 // CBondPair objects.
@@ -162,7 +179,10 @@ CPolymer::~CPolymer()
 // their owning polymer so that they can navigate upwards when passing beads
 // between processors.
 
-CPolymer::CPolymer(const CPolymer &oldPolymer)
+CPolymer::CPolymer(const CPolymer &oldPolymer): m_HelixPolymerType(oldPolymer.m_HelixPolymerType),
+                                                m_HelixBeadType(oldPolymer.m_HelixBeadType),
+                                                m_BeadSep13(oldPolymer.m_BeadSep13),
+                                                m_BeadSep15(oldPolymer.m_BeadSep15)
 {
 	m_id				=	oldPolymer.m_id;
 	m_Type				=	oldPolymer.m_Type;
@@ -655,6 +675,7 @@ void CPolymer::SetExtendedPolymer(mpuExtendedPolymer* pExtPolymer)
 }
 #endif
 
+
 // Functions to calculate the forces on a polymer's beads due to its bonds.
 // This includes both internal bonds that bind the beads into the polymer itself,
 // and external bonds that result from dynamically binding polymers together
@@ -704,7 +725,58 @@ void CPolymer::AddBondPairForces(ISimBoxBase* const pISimBoxBase)
 	}
 }
 
-// Function to empty all the bead, bond and bondpair containers in the polymer, and reset its id and type, before it is added 
+// Function to add helix-forming forces to the S bead type in the Helix polymers.
+// They are identified by the unique numeric identifier, not the name.
+// All parameters are hard-wired in this class.
+// This is VERY inefficient, but I can store the Helix polymers locally later to speed it up.
+
+
+void CPolymer::AddHelixForces()
+{
+    if( GetType() == m_HelixPolymerType )  // Not really needed as CSimBox already selected Helix polymers.
+    {
+        // iterate over all beads and copy the helix-forming beads beads into a  local vector.
+        // As this doesn't change, we could to it in the constructor to be more efficient.
+        
+        BeadVector vHelixBeads;
+        vHelixBeads.clear();
+        
+        for(BeadVectorIterator iterBead=m_vBeads.begin(); iterBead!=m_vBeads.end(); iterBead++)
+        {
+            if( (*iterBead)->GetType() == m_HelixBeadType )
+            {
+                vHelixBeads.push_back(*iterBead);
+                
+                    std::cout << "Polymer/bead ids " << GetId() << " " << (*iterBead)->GetId() << zEndl;
+             }
+        }
+
+        // Apply the proximity test to the S beads to form the helix, and then the force.
+        // Note that as we iterate over each bead, we know thatwe must look ahead precisely n beads, so we don't
+        // need a double loop. But we do need to check that the beads that would be connected are S beads.
+        //
+        //  m_BeadSep13 and m_BeadSep15 are the separation of the S beads that are to be tied together.
+        //
+        
+        if( !vHelixBeads.empty() )
+        {
+            for(BeadVectorIterator iterBead=vHelixBeads.begin(); iterBead!=vHelixBeads.end(); iterBead++)
+            {
+
+
+
+                
+                // To add the force components fx, fy, fz to a bead use this:
+                //
+                // (*iterBead)->AddHelixForces(fx, fy, fz);
+            }
+        }
+    }
+}
+
+
+
+// Function to empty all the bead, bond and bondpair containers in the polymer, and reset its id and type, before it is added
 // to the empty polymers containers.  This is needed so that the polymer's beads, etc, are released before being owned by one 
 // of the empty bead containers.
 
