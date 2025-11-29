@@ -49,13 +49,18 @@ double CPolymer::m_Morse13Depth          = 12.0; // 12 kT
 double CPolymer::m_Morse13Width          = 8.0;
 double CPolymer::m_Morse13EqDistance     = 0.3; // Rc = 0.5 in DPD -> 0.6 * Rc = 0.3
 double CPolymer::m_Morse13CutoffDistance = 1.25; // 2.5 * Rc
-double CPolymer::m_Morse13Proximity      = 1.0;
+double CPolymer::m_Morse13Proximity      = 1.0; // What is meant by proximity ?
 
 double CPolymer::m_Morse15Depth          = 12.0; // 12 kT
 double CPolymer::m_Morse15Width          = 8.0;
 double CPolymer::m_Morse15EqDistance     = 0.45; // Rc = 0.5 in DPD -> 0.9 * Rc = 0.45
 double CPolymer::m_Morse15CutoffDistance = 1.25; // 2.5 * Rc
-double CPolymer::m_Morse15Proximity      = 1.0;
+double CPolymer::m_Morse15Proximity      = 1.0; 
+
+double CPolymer::m_Harmonic13_constant	 = 20.0; // 80kT/Rc^2, 80*0.5^2=20
+double CPolymer::m_Harmonic13_EqDistance = 0.6;  // 1.2RC, 1.2*0.5=0.6
+double CPolymer::m_Harmonic13_cutoffdistance = 10; //connait pas la valeur ?
+
 
 //////////////////////////////////////////////////////////////////////
 // Construction/Destruction
@@ -764,8 +769,7 @@ void CPolymer::AddHelixForces()
             for(BeadVectorIterator iterBead=vHelixBeads.begin(); iterBead!=vHelixBeads.end(); iterBead++)
             {
                 CBead* pBead1 = *iterBead;
-
-                // === 1–3 MORSE INTERACTION ===
+                // === 1–3 INTERACTION ===
                 {
                     BeadVectorIterator iterBead13 = iterBead;
                     std::advance(iterBead13, m_BeadSep13);
@@ -786,7 +790,17 @@ void CPolymer::AddHelixForces()
                         if(r2 > 0.0)
                         {
                             double r = sqrt(r2);
+							double invr = 1.0 / r;
+						// === 1-3 HARMONIC INTERACTIONS ===
 
+							// 𝐅𝑖𝑗 = 𝐶(𝑟 𝑒− 𝑟𝑖𝑗)𝐧𝑖𝑗 
+							double forceMag_harmonic=m_Harmonic13_constant*(m_Harmonic13_EqDistance-r);
+							double fx=forceMag_harmonic*dx*invr;
+							double fy=forceMag_harmonic*dy*invr;
+							double fz=forceMag_harmonic*dz*invr;
+
+
+						// === 1-3 MORSE INTERACTIONS ===
                             // Proximity / cutoff test
                             if( r < m_Morse13CutoffDistance)
                             {
@@ -794,20 +808,20 @@ void CPolymer::AddHelixForces()
                                 double dr_abs = fabs(r - m_Morse13EqDistance);
                                 double e = exp(-m_Morse13Width * dr_abs);
 
-                                // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 )
+                                // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 ) ## il faut jouer avec le alpha ici
                                 double forceMag = 2.0 * m_Morse13Depth * e * (e - 1.0);
 
 
 								// Fx,ij = F_mag (r) * dx / r_ij etc
-                                double invr = 1.0 / r;
-                                double fx = forceMag * dx * invr;
-                                double fy = forceMag * dy * invr;
-                                double fz = forceMag * dz * invr;
+                                fx += forceMag * dx * invr;
+                                fy += forceMag * dy * invr;
+                                fz += forceMag * dz * invr;
 
-                                // Apply equal and opposite forces to the bead pair
-                                pBead1->AddHelixForces( fx,  fy,  fz );
-                                pBead2->AddHelixForces( -fx, -fy, -fz );
+
                             }
+						// Apply equal and opposite forces to the bead pair
+                        	pBead1->AddHelixForces( fx,  fy,  fz );
+                            pBead2->AddHelixForces( -fx, -fy, -fz );
                         }
                     }
                 }
