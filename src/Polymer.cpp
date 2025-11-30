@@ -753,7 +753,7 @@ void CPolymer::AddHelixForces()
             {
                 vHelixBeads.push_back(*iterBead);
                 
-                std::cout << "Polymer/bead ids " << GetId() << " " << (*iterBead)->GetId() << zEndl;
+                //std::cout << "Polymer/bead ids " << GetId() << " " << (*iterBead)->GetId() << zEndl;
             }
         }
 
@@ -769,12 +769,15 @@ void CPolymer::AddHelixForces()
             for(BeadVectorIterator iterBead=vHelixBeads.begin(); iterBead!=vHelixBeads.end(); iterBead++)
             {
                 CBead* pBead1 = *iterBead;
-                // === 1–3 INTERACTION ===
+
+				// === 1–3 INTERACTION ===
+				BeadVectorIterator iterBead13 = iterBead;
+				if(std::distance(iterBead13, vHelixBeads.end()) > m_BeadSep13)
                 {
-                    BeadVectorIterator iterBead13 = iterBead;
+                    
                     std::advance(iterBead13, m_BeadSep13);
 
-                    if( iterBead13 != vHelixBeads.end() )
+                    if( iterBead13 != vHelixBeads.end() )// not necessary 
                     {
                         CBead* pBead2 = *iterBead13;
 
@@ -804,7 +807,7 @@ void CPolymer::AddHelixForces()
                             // Proximity / cutoff test
                             if( r < m_Morse13CutoffDistance)
                             {
-                                // |r - r_e| in the exponent
+                                // |r - r_e| in the exponent ## We can play with the absolute values also !
                                 double dr_abs = fabs(r - m_Morse13EqDistance);
                                 double e = exp(-m_Morse13Width * dr_abs);
 
@@ -827,11 +830,13 @@ void CPolymer::AddHelixForces()
                 }
 
                 // === 1–5 MORSE INTERACTION ===
+				BeadVectorIterator iterBead15 = iterBead;
+				if(std::distance(iterBead15, vHelixBeads.end()) > m_BeadSep15)
                 {
-                    BeadVectorIterator iterBead15 = iterBead;
+                    
                     std::advance(iterBead15, m_BeadSep15);
 
-                    if( iterBead15 != vHelixBeads.end() )
+                    if( iterBead15 != vHelixBeads.end() ) // not necessary 
                     {
                         CBead* pBead2 = *iterBead15;
 

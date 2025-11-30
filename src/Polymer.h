@@ -41,6 +41,10 @@ public:
     static double  m_Morse15CutoffDistance;
     static double  m_Morse15Proximity;
 
+	static double  m_Harmonic13_constant;	
+	static double  m_Harmonic13_EqDistance;
+	static double  m_Harmonic13_cutoffdistance;
+
     
     // ****************************************
 	// Construction/Destruction: 
