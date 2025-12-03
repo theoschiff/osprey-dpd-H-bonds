@@ -807,19 +807,18 @@ void CPolymer::AddHelixForces()
                             // Proximity / cutoff test
                             if( r < m_Morse13CutoffDistance)
                             {
-                                // |r - r_e| in the exponent ## We can play with the absolute values also !
-                                double dr_abs = fabs(r - m_Morse13EqDistance);
-                                double e = exp(-m_Morse13Width * dr_abs);
+                                // (r - r_e) in the exponent 
+                                double dr = r - m_Morse13EqDistance;
+                                double e = exp(-m_Morse13Width * dr);
 
-                                // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 ) ## il faut jouer avec le alpha ici
-                                double forceMag = 2.0 * m_Morse13Depth * e * (e - 1.0);
+                                // |F| = 2 * α * K_M e^{-α(r-r_e)} ( e^{-α(r-r_e)} - 1 ) ## il faut jouer avec le alpha ici
+                                double forceMag = 2.0 * m_Morse13Width * m_Morse13Depth * e * (e - 1.0); // α multiplied here because of derivative
 
 
 								// Fx,ij = F_mag (r) * dx / r_ij etc
                                 fx += forceMag * dx * invr;
                                 fy += forceMag * dy * invr;
                                 fz += forceMag * dz * invr;
-
 
                             }
 						// Apply equal and opposite forces to the bead pair
@@ -856,12 +855,12 @@ void CPolymer::AddHelixForces()
                             // Proximity / cutoff test
                             if( r < m_Morse15CutoffDistance)
                             {
-                                // |r - r_e| in the exponent
-                                double dr_abs = fabs(r - m_Morse15EqDistance);
-                                double e = exp(-m_Morse15Width * dr_abs);
+                                // (r - r_e) in the exponent
+                                double dr = r - m_Morse15EqDistance;
+                                double e = exp(-m_Morse15Width * dr);
 
-                                // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 )
-                                double forceMag = 2.0 * m_Morse15Depth * e * (e - 1.0);
+                                // |F| = 2 * α * K_M e^{-a(r-r_e)} ( e^{-a(r-r_e)} - 1 )
+                                double forceMag = 2.0 * m_Morse15Width * m_Morse15Depth * e * (e - 1.0); // α multiplied here because of derivative
 
 								// Fx,ij = F_mag (r) * dx / r_ij etc
                                 double invr = 1.0 / r;
