@@ -46,19 +46,20 @@ bool operator==(const CPolymer& a, const CPolymer& b)
 //TODO : These would have to be set correctly : based on the Vish
 
 double CPolymer::m_Morse13Depth          = 12.0; // 12 kT
-double CPolymer::m_Morse13Width          = 8.0;
-double CPolymer::m_Morse13EqDistance     = 0.3; // Rc = 0.5 in DPD -> 0.6 * Rc = 0.3
-double CPolymer::m_Morse13CutoffDistance = 1.25; // 2.5 * Rc
+double CPolymer::m_Morse13Width          = 8.0; // alpha
+double CPolymer::m_Morse13EqDistance     = 0.6; // Rc = 0.5 in DPD -> 0.6 / Rc = 1.2
+double CPolymer::m_Morse13CutoffDistance = 2.5; // 2.5 / Rc
 double CPolymer::m_Morse13Proximity      = 1.0; // What is meant by proximity ?
 
+
 double CPolymer::m_Morse15Depth          = 12.0; // 12 kT
-double CPolymer::m_Morse15Width          = 8.0;
-double CPolymer::m_Morse15EqDistance     = 0.45; // Rc = 0.5 in DPD -> 0.9 * Rc = 0.45
-double CPolymer::m_Morse15CutoffDistance = 1.25; // 2.5 * Rc
+double CPolymer::m_Morse15Width          = 8.0;  // alpha
+double CPolymer::m_Morse15EqDistance     = 0.6; // Rc = 0.5 in DPD -> 0.6 / Rc = 1.2
+double CPolymer::m_Morse15CutoffDistance = 3.0; // 3 / Rc
 double CPolymer::m_Morse15Proximity      = 1.0; 
 
-double CPolymer::m_Harmonic13_constant	 = 20.0; // 80kT/Rc^2, 80*0.5^2=20
-double CPolymer::m_Harmonic13_EqDistance = 0.6;  // 1.2RC, 1.2*0.5=0.6
+double CPolymer::m_Harmonic13_constant	 = 80.0; // 80kT/Rc^2, 80/0.5^2=20
+double CPolymer::m_Harmonic13_EqDistance = 1.2;  // 1.2RC, 1.2*0.5=0.6
 double CPolymer::m_Harmonic13_cutoffdistance = 10; //connait pas la valeur ?
 
 
@@ -746,7 +747,6 @@ void CPolymer::AddHelixForces()
         
         BeadVector vHelixBeads;
         vHelixBeads.clear();
-        
         for(BeadVectorIterator iterBead=m_vBeads.begin(); iterBead!=m_vBeads.end(); iterBead++)
         {
             if( (*iterBead)->GetType() == m_HelixBeadType )
@@ -766,19 +766,22 @@ void CPolymer::AddHelixForces()
         
         if( !vHelixBeads.empty() )
         {
+			int i=1;
             for(BeadVectorIterator iterBead=vHelixBeads.begin(); iterBead!=vHelixBeads.end(); iterBead++)
             {
-                CBead* pBead1 = *iterBead;
+                CBead* pBead1 = *iterBead; 
 
 				// === 1–3 INTERACTION ===
 				BeadVectorIterator iterBead13 = iterBead;
-				if(std::distance(iterBead13, vHelixBeads.end()) > m_BeadSep13)
+
+				if(std::distance(iterBead13, vHelixBeads.end()) > m_BeadSep13 and i<vHelixBeads.size()-1) //problem with this condition ! 58 le last
                 {
-                    
+
                     std::advance(iterBead13, m_BeadSep13);
 
                     if( iterBead13 != vHelixBeads.end() )// not necessary 
                     {
+
                         CBead* pBead2 = *iterBead13;
 
                         // Both must be S beads by construction of vHelixBeads
@@ -808,11 +811,11 @@ void CPolymer::AddHelixForces()
                             if( r < m_Morse13CutoffDistance)
                             {
                                 // |r - r_e| in the exponent ## We can play with the absolute values also !
-                                double dr_abs = fabs(r - m_Morse13EqDistance);
+                                double dr_abs = (r - m_Morse13EqDistance);
                                 double e = exp(-m_Morse13Width * dr_abs);
 
                                 // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 ) ## il faut jouer avec le alpha ici
-                                double forceMag = 2.0 * m_Morse13Depth * e * (e - 1.0);
+                                double forceMag = 2.0 * m_Morse13Width *m_Morse13Depth * e * (e - 1.0);
 
 
 								// Fx,ij = F_mag (r) * dx / r_ij etc
@@ -831,13 +834,15 @@ void CPolymer::AddHelixForces()
 
                 // === 1–5 MORSE INTERACTION ===
 				BeadVectorIterator iterBead15 = iterBead;
-				if(std::distance(iterBead15, vHelixBeads.end()) > m_BeadSep15)
+
+				if(std::distance(iterBead15, vHelixBeads.end()) > m_BeadSep15 and i<vHelixBeads.size()-3) //problem with this condition !
                 {
-                    
+
                     std::advance(iterBead15, m_BeadSep15);
 
                     if( iterBead15 != vHelixBeads.end() ) // not necessary 
                     {
+
                         CBead* pBead2 = *iterBead15;
 
                         // Both must be S beads by construction of vHelixBeads
@@ -857,11 +862,11 @@ void CPolymer::AddHelixForces()
                             if( r < m_Morse15CutoffDistance)
                             {
                                 // |r - r_e| in the exponent
-                                double dr_abs = fabs(r - m_Morse15EqDistance);
+                                double dr_abs = (r - m_Morse15EqDistance);
                                 double e = exp(-m_Morse15Width * dr_abs);
 
                                 // |F| = 2 K_M e^{-a|r-r_e|} ( e^{-a|r-r_e|} - 1 )
-                                double forceMag = 2.0 * m_Morse15Depth * e * (e - 1.0);
+                                double forceMag = 2.0 *m_Morse15Width* m_Morse15Depth * e * (e - 1.0);
 
 								// Fx,ij = F_mag (r) * dx / r_ij etc
                                 double invr = 1.0 / r;
@@ -876,6 +881,7 @@ void CPolymer::AddHelixForces()
                         }
                     }
                 }
+				i+=1;
             }
         }
     }
