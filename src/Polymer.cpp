@@ -46,21 +46,21 @@ bool operator==(const CPolymer& a, const CPolymer& b)
 //TODO : These would have to be set correctly : based on the Vish
 
 double CPolymer::m_Morse13Depth          = 12.0; // 12 kT
-double CPolymer::m_Morse13Width          = 8.0; // alpha
-double CPolymer::m_Morse13EqDistance     = 0.6; // Rc = 0.5 in DPD -> 0.6 / Rc = 1.2
-double CPolymer::m_Morse13CutoffDistance = 2.5; // 2.5 / Rc
+double CPolymer::m_Morse13Width          = 2.0; // alpha
+double CPolymer::m_Morse13EqDistance     = 0.9; // 0.9 from hdoi
+double CPolymer::m_Morse13CutoffDistance = 10000.0; // from hdoi -> very large cutoff -> if works -> use box size later
 double CPolymer::m_Morse13Proximity      = 1.0; // What is meant by proximity ?
 
 
-double CPolymer::m_Morse15Depth          = 12.0; // 12 kT
-double CPolymer::m_Morse15Width          = 8.0;  // alpha
+double CPolymer::m_Morse15Depth          = 12.0; // hdoi is 9 so change later to check behaviour
+double CPolymer::m_Morse15Width          = 2.0;  // alpha: much smaller width to ensure stiffer potential
 double CPolymer::m_Morse15EqDistance     = 0.6; // Rc = 0.5 in DPD -> 0.6 / Rc = 1.2
-double CPolymer::m_Morse15CutoffDistance = 3.0; // 3 / Rc
+double CPolymer::m_Morse15CutoffDistance = 10000.0; // from hdoi -> very large cutoff -> if works -> use box size later
 double CPolymer::m_Morse15Proximity      = 1.0; 
 
 double CPolymer::m_Harmonic13_constant	 = 80.0; // 80kT/Rc^2, 80/0.5^2=20
 double CPolymer::m_Harmonic13_EqDistance = 1.2;  // 1.2RC, 1.2*0.5=0.6
-double CPolymer::m_Harmonic13_cutoffdistance = 10; //connait pas la valeur ?
+double CPolymer::m_Harmonic13_cutoffdistance = 10000.0; 
 
 
 //////////////////////////////////////////////////////////////////////
