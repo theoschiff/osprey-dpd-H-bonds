@@ -774,7 +774,7 @@ void CPolymer::AddHelixForces()
 				// === 1–3 INTERACTION ===
 				BeadVectorIterator iterBead13 = iterBead;
 
-				if(std::distance(iterBead13, vHelixBeads.end()) > m_BeadSep13 and i<vHelixBeads.size()-1) //problem with this condition ! 58 le last
+				if( i<vHelixBeads.size()-1) //problem with this condition ! 58 le last
                 {
 
                     std::advance(iterBead13, m_BeadSep13);
@@ -834,7 +834,7 @@ void CPolymer::AddHelixForces()
                 // === 1–5 MORSE INTERACTION ===
 				BeadVectorIterator iterBead15 = iterBead;
 
-				if(std::distance(iterBead15, vHelixBeads.end()) > m_BeadSep15 and i<vHelixBeads.size()-3) //problem with this condition !
+				if(i<vHelixBeads.size()-3) //problem with this condition !
                 {
 
                     std::advance(iterBead15, m_BeadSep15);
