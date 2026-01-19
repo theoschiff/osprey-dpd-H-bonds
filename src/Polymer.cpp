@@ -43,24 +43,37 @@ bool operator==(const CPolymer& a, const CPolymer& b)
 
 // Static member variable holding the parameters of the Morse potentials.
 
-//TODO : These would have to be set correctly : based on the Vish
+// --- Helix “H-bond-like” Morse interactions (Vishnyakov et al., 2012; Doi et al., 2018) ---
+// The Morse potential is used as a dissociable bond to mimic hydrogen-bond effects in DPD,
+// parameterized by: KM (well depth), alpha (width), re (equilibrium distance), and rM (cutoff).
+// Vishnyakov explicitly introduces 1–3 and 1–5 Morse bonds for helix formation, with
+// alpha = 8, re(1–3)=0.9 Rc, re(1–5)=0.6 Rc, and cutoff rM = 2.5 Rc. 
 
-double CPolymer::m_Morse13Depth          = 12.0; // 12 kT
-double CPolymer::m_Morse13Width          = 2.0; // alpha
-double CPolymer::m_Morse13EqDistance     = 0.9; // 0.9 from hdoi
-double CPolymer::m_Morse13CutoffDistance = 10000.0; // from hdoi -> very large cutoff -> if works -> use box size later
-double CPolymer::m_Morse13Proximity      = 1.0; // What is meant by proximity ?
+// 1–3 Morse: between helix beads separated by two harmonic bonds (i ↔ i+2).
+// Role (per Vishnyakov): reduces accessible local angles / torsional freedom so the backbone can
+// attain a helical configuration without being rigidly locked in coil/globule states. 
+double CPolymer::m_Morse13Depth          = 36.0;   // KM: Morse well depth (paper baseline: K1–3 = 12 kBT)
+double CPolymer::m_Morse13Width          = 8.0;    // alpha: Morse width parameter (paper baseline: alpha = 8)
+double CPolymer::m_Morse13EqDistance     = 0.9;    // re: equilibrium distance for 1–3 Morse (paper baseline: re = 0.9 Rc)
+double CPolymer::m_Morse13CutoffDistance = 10000.0;// rM: cutoff distance beyond which Morse interaction is disabled - we set very large to disable (paper baseline: rM = 2.5 Rc)
+double CPolymer::m_Morse13Proximity      = 1.0;    // Optional “activation” distance threshold (not used in the shown AddHelixForces(); if used, it typically gates when the Morse term is evaluated)
 
+// 1–5 Morse: helix-forming “vertical” contact along helix axis (i ↔ i+4).
+// Role (per Vishnyakov): models intrachain hydrogen-bonding pattern along the helix axis while
+// respecting steric constraints of the coarse-grained chain.
+double CPolymer::m_Morse15Depth          = 36.0;   // KM: Morse well depth for 1–5 / i↔i+4 (paper varies K1–5 from 0 to 12 kBT)
+double CPolymer::m_Morse15Width          = 8.0;    // alpha: Morse width parameter (paper baseline: alpha = 8)
+double CPolymer::m_Morse15EqDistance     = 0.6;    // re: equilibrium distance for 1–5 / i↔i+4 (paper baseline: re = 0.6 Rc)
+double CPolymer::m_Morse15CutoffDistance = 10000.0;// rM: cutoff distance (paper baseline: rM = 2.5 Rc; very large ≈ “no cutoff”)
+double CPolymer::m_Morse15Proximity      = 1.0;    // Optional “activation” distance threshold (same note as above)
 
-double CPolymer::m_Morse15Depth          = 12.0; // hdoi is 9 so change later to check behaviour
-double CPolymer::m_Morse15Width          = 2.0;  // alpha: much smaller width to ensure stiffer potential
-double CPolymer::m_Morse15EqDistance     = 0.6; // Rc = 0.5 in DPD -> 0.6 / Rc = 1.2
-double CPolymer::m_Morse15CutoffDistance = 10000.0; // from hdoi -> very large cutoff -> if works -> use box size later
-double CPolymer::m_Morse15Proximity      = 1.0; 
+// --- Extra harmonic constraint used in the helix model ---
+// In the Doi/Vishnyakov helix setup, the 1–3 interaction includes a harmonic component with
+// C = 80 and re = 1.2 (in reduced distance units), in addition to the 1–3 Morse term.
+double CPolymer::m_Harmonic13_constant        = 80.0;    // C: harmonic force constant for the 1–3 harmonic constraint (paper baseline: C = 80)
+double CPolymer::m_Harmonic13_EqDistance      = 1.2;     // re: equilibrium distance for the 1–3 harmonic constraint (paper baseline: re = 1.2)
+double CPolymer::m_Harmonic13_cutoffdistance  = 10000.0; // Optional cutoff for applying the harmonic constraint (not part of the paper’s parameter list; large value ≈ “no cutoff”)
 
-double CPolymer::m_Harmonic13_constant	 = 80.0; // 80kT/Rc^2, 80/0.5^2=20
-double CPolymer::m_Harmonic13_EqDistance = 1.2;  // 1.2RC, 1.2*0.5=0.6
-double CPolymer::m_Harmonic13_cutoffdistance = 10000.0; 
 
 
 //////////////////////////////////////////////////////////////////////
@@ -736,7 +749,7 @@ void CPolymer::AddBondPairForces(ISimBoxBase* const pISimBoxBase)
 // Function to add helix-forming forces to the S bead type in the Helix polymers.
 // They are identified by the unique numeric identifier, not the name.
 // All parameters are hard-wired in this class.
-// This is VERY inefficient, but I can store the Helix polymers locally later to speed it up.
+// Note: This is quite inefficient, but we can store the Helix polymers locally later to speed it up.
 
 void CPolymer::AddHelixForces()
 {
@@ -810,13 +823,12 @@ void CPolymer::AddHelixForces()
                             // Proximity / cutoff test
                             if( r < m_Morse13CutoffDistance)
                             {
-                                // (r - r_e) in the exponent 
-                                double dr = r - m_Morse13EqDistance;
+								// Doi et al. describe/implement a modified Morse-force form (with |r - re| in the exponent) 
+                                double dr = fabs(r - m_Morse13EqDistance);
                                 double e = exp(-m_Morse13Width * dr);
 
                                 // |F| = 2 * α * K_M e^{-α(r-r_e)} ( e^{-α(r-r_e)} - 1 ) ## il faut jouer avec le alpha ici
                                 double forceMag = 2.0 * m_Morse13Width * m_Morse13Depth * e * (e - 1.0); // α multiplied here because of derivative
-
 
 								// Fx,ij = F_mag (r) * dx / r_ij etc
                                 fx += forceMag * dx * invr;
@@ -860,8 +872,8 @@ void CPolymer::AddHelixForces()
                             // Proximity / cutoff test
                             if( r < m_Morse15CutoffDistance)
                             {
-                                // (r - r_e) in the exponent
-                                double dr = r - m_Morse15EqDistance;
+                                // Doi et al. describe/implement a modified Morse-force form (with |r - re| in the exponent) 
+                                double dr = fabs(r - m_Morse15EqDistance);
                                 double e = exp(-m_Morse15Width * dr);
 
                                 // |F| = 2 * α * K_M e^{-a(r-r_e)} ( e^{-a(r-r_e)} - 1 )
